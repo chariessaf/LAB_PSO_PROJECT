@@ -41,8 +41,14 @@ typedef struct _THREAD
     char*                   Name;
 
     // Currently the thread priority is not used for anything
-    THREAD_PRIORITY         Priority;
+    THREAD_PRIORITY         Priority;       // the effective one
     THREAD_STATE            State;
+
+    // Used for priority donation
+    THREAD_PRIORITY         RealPriority; // the real one
+    LIST_ENTRY              AcquiredMutexesList;
+    PMUTEX                  WaitedMutex;    // the mutex thread waits for
+
 
     // valid only if State == ThreadStateTerminated
     STATUS                  ExitStatus;

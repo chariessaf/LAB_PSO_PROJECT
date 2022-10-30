@@ -43,6 +43,9 @@ MutexAcquire(
         Mutex->CurrentRecursivityDepth++;
         return;
     }
+    // 39-45, daca conditia de if este True, atunci fiecarui mutex ii vom calcula
+    // un fel de adancime, pana vom ajunge la adancimea maxima
+
 
     oldState = CpuIntrDisable();
 
@@ -55,12 +58,35 @@ MutexAcquire(
 
     while (Mutex->Holder != pCurrentThread)
     {
+        /*
+        crtThPrio = ThreadGetPriority(pCurrentThread);
+        holderPrio = ThreadGetPriority(Mutex->Holder);
+        
+        if (crtPrio > HolderPrio)
+        {
+            // priority donation
+            Mutex->Holder->Priority = crtThPrio;
+        }
+        */
+
+
+        /////////////////////////////////////////////
+
+        if (pCurrentThread->Priority > Mutex->Holder->Priority) {
+            // Daca da atunci ii doneaza prioritatea la holder
+            Mutex->Holder->Priority = pCurrentThread->Priority;
+        }
+
+        /////////////////////////////////////////////
+
         InsertTailList(&Mutex->WaitingList, &pCurrentThread->ReadyList);
         ThreadTakeBlockLock();
         LockRelease(&Mutex->MutexLock, dummyState);
         ThreadBlock();
         LockAcquire(&Mutex->MutexLock, &dummyState );
     }
+// Bucla while e nevoita pentru ca un thread nu poate sa ia un mutex cand 
+// se trezeste, ci acesta trebuie sa ne asiguram ca moi suntem holder-ul acelui mutex
 
     _Analysis_assume_lock_acquired_(*Mutex);
 
@@ -81,6 +107,12 @@ MutexRelease(
 
     ASSERT(NULL != Mutex);
     ASSERT(GetCurrentThread() == Mutex->Holder);
+    /*
+    if (Mutex->Holder->Priority != Mutex->Holder->RealPriority)
+    {
+        Mutex->Holder->Priority = Mutex->Holder->RealPriority;
+    }
+    */
 
     if (Mutex->CurrentRecursivityDepth > 1)
     {
@@ -108,6 +140,13 @@ MutexRelease(
     }
 
     _Analysis_assume_lock_released_(*Mutex);
+
+    ////////////////////////////////////////////////
+
+    // pierde toate donatiile de prioritate
+    GetCurrentThread()->Priority = GetCurrentThread()->RealPriority;
+
+    ////////////////////////////////////////////////
 
     LockRelease(&Mutex->MutexLock, oldState);
 }
